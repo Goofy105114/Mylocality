@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /complaints/{id} {
+      // Residents can read only their own complaints
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Residents can create only their own complaint, always starting as Pending
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'Pending'
+        && request.resource.data.category is string
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 10;
+
+      // Status changes are done by admin from the Firebase Console (bypasses rules)
+      allow update, delete: if false;
+    }
+  }
+}

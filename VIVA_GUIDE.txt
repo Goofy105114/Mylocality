@@ -1,0 +1,539 @@
+MyLocality - Complete Viva Master Guide
+B.Tech CSE Sem 5 | Cross Platform Application | Target: 20/20
+================================================================
+
+
+PART 1: DART LANGUAGE
+=====================
+
+1.1 What is Dart?
+- Object-oriented, strongly typed language by Google
+- Compiled to native (mobile/desktop) and JavaScript (web)
+- Flutter uses Dart exclusively
+- Supports AOT (Ahead of Time) and JIT (Just in Time) compilation
+
+
+1.2 Variables
+
+  var name = 'Ankit';       // inferred as String, can reassign
+  String city = 'Mumbai';   // explicit type
+  final uid = user.uid;     // set once at runtime, cannot change
+  const maxLen = 500;       // compile-time constant
+
+Difference: var vs final vs const
+  var    -> type inferred, can reassign, set at runtime
+  final  -> cannot reassign, set at runtime
+  const  -> cannot reassign, set at compile time
+
+
+1.3 Data Types
+
+  int age = 20;
+  double price = 9.99;
+  String name = 'Ankit';
+  bool isLoggedIn = true;
+  List<String> items = ['a', 'b'];
+  Map<String, dynamic> data = {'key': 'value'};
+
+
+1.4 Null Safety
+- Dart is null-safe — variables cannot be null unless you say so
+- String?  -> nullable, can be null
+- String   -> non-nullable, never null
+- !        -> force unwrap (crashes if null, use carefully)
+- ??       -> null coalescing: give fallback value
+- ?.       -> safe call: only call if not null
+
+  String? name;
+  print(name ?? 'Guest');    // prints 'Guest' if null
+  print(name!);              // crashes if name is null
+  user?.displayName          // only access if user not null
+
+
+1.5 Functions
+
+  // Regular function
+  String greet(String name) {
+    return 'Hello $name';
+  }
+
+  // Arrow function (single expression)
+  String greet(String name) => 'Hello $name';
+
+  // Async function
+  Future<void> submit() async {
+    await saveToDatabase();
+  }
+
+
+1.6 Classes and OOP
+
+  class Complaint {
+    final String id;
+    final String category;
+    String status;
+
+    Complaint({required this.id, required this.category, this.status = 'Pending'});
+
+    void resolve() {
+      status = 'Resolved';
+    }
+  }
+
+4 Pillars of OOP in Dart:
+- Encapsulation  -> _privateField (underscore = private in Dart)
+- Inheritance    -> class Admin extends User
+- Polymorphism   -> override methods in subclass
+- Abstraction    -> abstract classes, interfaces
+
+
+1.7 Future and async/await
+- Future<T> -> represents a value that will be available later
+- async     -> marks function as asynchronous
+- await     -> pause here until Future completes
+
+  Future<void> submit() async {
+    await firestore.add(data);   // wait for Firestore write
+    showSnackbar();               // runs only after write done
+  }
+
+
+1.8 Stream
+- Like a Future, but delivers multiple values over time
+- Think of it as a pipe — data keeps flowing
+- Used for real-time data (Firestore live updates)
+
+  Stream<List<Complaint>> watchComplaints() {
+    return firestore.collection('complaints').snapshots().map(...);
+  }
+
+
+1.9 Error Handling
+
+  try {
+    await auth.signIn(email, password);
+  } on FirebaseAuthException catch (e) {
+    print('Firebase error: ${e.code}');
+  } finally {
+    setState(() => _loading = false); // always runs
+  }
+
+
+================================================================
+PART 2: FLUTTER FRAMEWORK
+==========================
+
+2.1 What is Flutter?
+- Open-source UI framework by Google
+- Write once, run on Android, iOS, Web, Desktop
+- Uses Dart language
+- Everything is a Widget
+- Uses its own rendering engine (Skia/Impeller) — not native components
+
+
+2.2 StatelessWidget vs StatefulWidget
+
+  StatelessWidget:
+  - No internal state
+  - Renders once, never rebuilds on its own
+  - Examples in your app: ComplaintCard, StatusChip
+
+  StatefulWidget:
+  - Has internal mutable state
+  - Can call setState() to rebuild
+  - Examples in your app: LoginScreen, HomeShell, RaiseComplaintScreen
+
+  // Stateless example
+  class StatusChip extends StatelessWidget {
+    final String status;
+    const StatusChip({required this.status});
+    @override
+    Widget build(BuildContext context) => Text(status);
+  }
+
+  // Stateful example
+  class _LoginScreenState extends State<LoginScreen> {
+    bool _loading = false;
+    void _submit() => setState(() => _loading = true);
+  }
+
+
+2.3 setState()
+- Marks widget as dirty — triggers rebuild
+- Flutter calls build() again with new state
+- Never call setState after dispose
+
+  setState(() {
+    _loading = true;
+    _category = null;
+  });
+
+
+2.4 FutureBuilder vs StreamBuilder
+
+  FutureBuilder:
+  - Handles a one-time async result
+  - Builds UI once when Future completes
+  - No live updates
+
+  StreamBuilder:
+  - Rebuilds UI every time stream emits new data
+  - Perfect for real-time Firestore data
+  - Used in MyComplaintsScreen
+
+  StreamBuilder<List<Complaint>>(
+    stream: service.streamMyComplaints(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting)
+        return CircularProgressIndicator();
+      return ListView(...);
+    },
+  )
+
+
+2.5 Key Widgets in Your App
+
+  Scaffold           -> Page structure (body, nav, snackbar)
+  Form + GlobalKey   -> Groups fields, enables validation
+  TextFormField      -> Input with built-in validator
+  StreamBuilder      -> Real-time UI from Firestore
+  ListView.builder   -> Efficient lazy list
+  AnimatedContainer  -> Smooth UI transitions (category cards)
+  TweenAnimationBuilder -> Animates progress bar smoothly
+  NavigationBar      -> Material 3 bottom navigation
+  FilledButton       -> Material 3 primary button
+  SegmentedButton    -> Login/Signup toggle
+
+
+2.6 Material Design 3
+- Enabled with useMaterial3: true in ThemeData
+- Your app uses it in app_theme.dart
+- New components: NavigationBar, FilledButton, SegmentedButton
+- Rounded corners, dynamic color, elevation
+
+
+================================================================
+PART 3: FIREBASE
+================
+
+3.1 What is Firebase?
+- Backend-as-a-Service (BaaS) platform by Google
+- No need to write your own server
+- Provides: Authentication, Firestore, Storage, Hosting
+- Real-time capabilities built in
+- Free tier (Spark plan) — enough for this project
+
+
+3.2 Firebase Authentication
+
+How it works in your app:
+  1. User enters email + password + name
+  2. createUserWithEmailAndPassword() called
+  3. Firebase creates account, returns User object
+  4. updateDisplayName() saves their name
+  5. authStateChanges() stream fires
+  6. AuthGate detects User and shows HomeShell
+
+Key methods:
+  FirebaseAuth.instance.authStateChanges() // stream driving AuthGate
+  FirebaseAuth.instance.currentUser        // get current user
+  user.updateDisplayName('Ankit')          // save display name
+  auth.signOut()                           // logout
+
+
+3.3 Cloud Firestore Structure
+
+  complaints (collection)
+    └── doc_id (document)
+          ├── userId: "abc123"
+          ├── userEmail: "user@email.com"
+          ├── category: "Street Light"
+          ├── description: "Light near Block C is off"
+          ├── status: "Pending"
+          └── createdAt: Timestamp
+
+
+3.4 Firestore vs Realtime Database
+
+  Firestore:
+  - Collections and Documents structure
+  - Powerful querying (multiple filters)
+  - Used in YOUR app
+
+  Realtime Database:
+  - Simple JSON tree structure
+  - Limited querying
+  - NOT used in your app
+
+
+3.5 Firestore Security Rules
+
+  allow read: if request.auth != null
+              && resource.data.userId == request.auth.uid;
+
+  allow create: if request.auth != null
+                && request.resource.data.userId == request.auth.uid
+                && request.resource.data.status == 'Pending';
+
+  allow update, delete: if false;
+
+- Server-side rules — run on Firebase servers, NOT your app
+- Cannot be bypassed by modifying app code
+- Users can only read/create their OWN complaints
+- Status must be Pending on create
+- Nobody can update/delete from the app (only admin from console)
+
+
+3.6 FieldValue.serverTimestamp()
+- Tells Firestore to set the timestamp on its own server
+- Better than DateTime.now() — device clocks can be wrong
+- Consistent across all users worldwide
+
+
+================================================================
+PART 4: YOUR PROJECT — DEEP DIVE
+==================================
+
+4.1 App Structure
+
+  lib/
+  ├── main.dart                       <- Firebase init + AuthGate
+  ├── firebase_options.dart           <- Firebase config / API keys
+  ├── models/complaint.dart           <- Complaint data class
+  ├── services/
+  │   ├── auth_service.dart           <- Firebase Auth wrapper
+  │   └── complaint_service.dart      <- Firestore read/write
+  ├── screens/
+  │   ├── login_screen.dart           <- Login + Register
+  │   ├── home_shell.dart             <- Main shell + greeting
+  │   ├── raise_complaint_screen.dart <- Submit complaint form
+  │   └── my_complaints_screen.dart   <- Real-time list
+  ├── widgets/
+  │   ├── complaint_card.dart         <- Single complaint UI
+  │   ├── status_chip.dart            <- Colored status badge
+  │   └── status_tracker.dart         <- Progress dots
+  └── theme/app_theme.dart            <- Colors, theme, icons
+
+
+4.2 User Journey
+
+  App opens
+      |
+  Firebase.initializeApp()
+      |
+  AuthGate (listens to authStateChanges stream)
+      |
+  +---+---+
+  |       |
+  null    User object
+  |       |
+  Login   HomeShell
+  Screen      |
+  |       +---+---+
+  register  Raise   My
+  /login  Complaint Complaints
+      |       |         |
+  AuthGate  Firestore  StreamBuilder
+  fires     write      auto-updates
+      |       |
+  HomeShell Stream fires
+
+
+4.3 File-by-File in One Line
+
+  main.dart               -> Initializes Firebase, AuthGate switches Login/Home
+  auth_service.dart       -> Wraps Auth: signIn, register (with name), signOut
+  complaint_service.dart  -> Submits to Firestore, streams complaints back live
+  home_shell.dart         -> Main shell: greeting with name, bottom nav, logout
+  login_screen.dart       -> Login/Register form, name field shown on signup
+  raise_complaint_screen  -> Category + description form, dynamic progress bar
+  my_complaints_screen    -> Real-time list with Pending/In Progress/Resolved filter
+  complaint_card.dart     -> Shows category, date, status chip, progress tracker
+
+
+4.4 Complaint Status Flow
+
+  User submits -> Pending (amber color)
+                      |
+             Admin changes in Firebase Console
+                      |
+               In Progress (blue color)
+                      |
+                Resolved (green color)
+
+  App reflects changes INSTANTLY via StreamBuilder — no refresh needed.
+
+
+4.5 Progress Bar Logic (raise_complaint_screen.dart)
+
+  0%   -> Nothing entered yet
+  20%  -> User has started typing description
+  50%  -> Category selected OR description >= 10 chars (one done)
+  100% -> Both category selected AND description >= 10 chars
+          Shows "All set. Ready to submit"
+
+  Uses TweenAnimationBuilder to animate smoothly between values.
+
+
+================================================================
+PART 5: VIVA Q&A — MEMORIZE THESE
+===================================
+
+Q: What is your app about?
+A: MyLocality lets residents log in, raise civic complaints with a
+   category and description, and track their real-time status using
+   Firebase Firestore.
+
+--
+
+Q: What happens when a user registers?
+A: Firebase creates the account, we call updateDisplayName() to save
+   their name, authStateChanges() stream fires, and AuthGate automatically
+   navigates to HomeShell.
+
+--
+
+Q: Why StreamBuilder and not FutureBuilder?
+A: FutureBuilder fetches once — you need manual refresh to see new data.
+   StreamBuilder keeps a live Firestore connection, so complaints appear
+   instantly when submitted and status updates show in real-time.
+
+--
+
+Q: What is the default complaint status and why?
+A: Pending. Hardcoded in submitComplaint() and enforced by Firestore
+   security rules that reject any create where status is not Pending.
+   This prevents users from faking their complaint status.
+
+--
+
+Q: How does "Hello, [name]" work?
+A: We read FirebaseAuth.instance.currentUser.displayName. If set, we
+   use it. If null, we fall back to the part before @ in their email.
+
+--
+
+Q: What is AuthGate?
+A: A widget with a StreamBuilder on authStateChanges(). When stream
+   emits null (logged out) it shows LoginScreen. When it emits a User
+   (logged in) it shows HomeShell. Screens switch automatically.
+
+--
+
+Q: Who can change complaint status?
+A: Only an admin from the Firebase Console. Security rules have
+   "allow update: if false" so no client can modify documents.
+   The StreamBuilder picks up admin changes instantly.
+
+--
+
+Q: What are Firestore security rules?
+A: Server-side rules on Firebase that control read/write access.
+   Cannot be bypassed by modifying the app. Our rules ensure users
+   can only access their own complaints by matching userId with
+   request.auth.uid.
+
+--
+
+Q: What is async/await?
+A: async marks a function as asynchronous. await pauses execution
+   until a Future completes. In our submit function, we await the
+   Firestore write before showing the success snackbar.
+
+--
+
+Q: What is setState()?
+A: Called inside StatefulWidget to tell Flutter the state changed
+   and the widget needs to rebuild. Flutter calls build() again
+   with updated values.
+
+--
+
+Q: Difference between StatefulWidget and StatelessWidget?
+A: StatelessWidget renders once based on its input — no internal state.
+   StatefulWidget has a State object that can call setState() to rebuild
+   when data changes.
+
+--
+
+Q: What is a Stream?
+A: A continuous sequence of async values over time. Unlike a Future
+   (one value), a Stream keeps delivering. Firestore's .snapshots()
+   is a Stream — emits new data every time the database changes.
+
+--
+
+Q: What is FieldValue.serverTimestamp()?
+A: Tells Firestore to set the timestamp on its servers when the document
+   is written. More reliable than device time — device clocks can be
+   wrong or manipulated.
+
+--
+
+Q: How does the progress bar work?
+A: Tracks form completion — 0% nothing, 20% typing started, 50% one
+   step done, 100% both category and description complete.
+   TweenAnimationBuilder animates it smoothly.
+
+--
+
+Q: Where is complaint data stored?
+A: Cloud Firestore, in a collection called 'complaints'. Each document
+   has: userId, userEmail, category, description, status, createdAt.
+
+
+================================================================
+PART 6: ONE-LINE DEFINITIONS
+==============================
+
+Flutter          -> Write-once run-everywhere UI framework by Google using Dart
+Widget           -> Basic building block of Flutter UI — everything is a widget
+StatefulWidget   -> Widget that can rebuild when internal state changes
+StatelessWidget  -> Widget that renders once, no internal state
+setState()       -> Triggers a rebuild of a StatefulWidget with new state
+Future           -> Async value that will arrive later (one time)
+Stream           -> Continuous flow of async values over time
+StreamBuilder    -> Widget that rebuilds on every new stream value
+FutureBuilder    -> Widget that builds once when a Future completes
+Firebase         -> Google's backend-as-a-service platform
+Firestore        -> NoSQL real-time cloud database (collections + documents)
+Firebase Auth    -> Manages user accounts, sessions, and authentication
+Security Rules   -> Server-side access control for Firestore, cannot be bypassed
+AuthGate         -> Listens to auth state, auto-switches Login <-> Home
+uid              -> Unique user ID assigned by Firebase to every account
+serverTimestamp  -> Server-set timestamp for consistent time across devices
+async/await      -> Clean syntax for writing asynchronous Dart code
+BuildContext     -> Widget's location in tree — used for nav/dialogs/theme
+null safety      -> Dart feature preventing null reference errors at compile time
+Material 3       -> Latest Google design system — used in your app's theme
+
+
+================================================================
+PART 7: NIGHT BEFORE CHECKLIST
+================================
+
+Before sleeping:
+  [ ] Run the app, use every feature once
+  [ ] Open Firestore console — see your complaint documents live
+  [ ] Read main.dart — explain AuthGate out loud to yourself
+  [ ] Read auth_service.dart — explain register() flow
+  [ ] Read complaint_service.dart — stream vs future difference
+  [ ] Read raise_complaint_screen.dart — progress bar logic
+  [ ] Read my_complaints_screen.dart — StreamBuilder usage
+  [ ] Memorize all 15 Q&A in Part 5
+  [ ] Know every file's one-liner from Part 4.3
+
+During viva:
+  - Open the running app and demo it live
+  - Show Firestore console with real data
+  - Point to specific lines when explaining code
+  - If unsure — say "I would need to check the docs" not a wrong answer
+
+Priority order for marks:
+  Part 4 (your project files) + Part 5 (Q&A) = 17+ marks guaranteed
+  Part 2 (Flutter) + Part 3 (Firebase) = push to 19+
+  Part 1 (Dart basics) = full 20/20
+
+================================================================
+Read Part 4 and Part 5 first. Those two alone will get you 17+.
+================================================================
